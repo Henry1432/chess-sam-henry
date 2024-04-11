@@ -3,9 +3,11 @@
 // https://github.com/Disservin/chess-library
 #include "chess.hpp"
 #include <random>
+#include <vector>
 using namespace ChessSimulator;
 
 std::string ChessSimulator::Move(std::string fen) {
+    int const NUM_SIM = 1000;
   // create your board based on the board string following the FEN notation
   // search for the best move using minimax / monte carlo tree search /
   // alpha-beta pruning / ... try to use nice heuristics to speed up the search
@@ -20,6 +22,13 @@ std::string ChessSimulator::Move(std::string fen) {
   if(moves.size() == 0)
     return "";
 
+  std::vector<int> eval;
+
+  for(int i =0; i < NUM_SIM; i++)
+  {
+
+  }
+
   // get random move
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -27,3 +36,4 @@ std::string ChessSimulator::Move(std::string fen) {
   auto move = moves[dist(gen)];
   return chess::uci::moveToUci(move);
 }
+
