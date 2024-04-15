@@ -6,11 +6,6 @@
 #include <vector>
 using namespace ChessSimulator;
 
-struct mctsNode
-{
-    std::string fen;
-    float potential;
-};
 
 std::string ChessSimulator::Move(std::string fen) {
     int const NUM_SIM = 1000;
@@ -43,14 +38,40 @@ std::string ChessSimulator::Move(std::string fen) {
   return chess::uci::moveToUci(move);
 }
 
-void ChessSimulator::Selection(std::string fen)
+void ChessSimulator::Selection(std::string fen, std::vector<mctsNode> nodes)
 {
+    if(!nodes.empty())
+    {
+        mctsNode* bestNode = nullptr;
 
+        for(int i = 0; i < nodes.size(); i++)
+        {
+            if(bestNode == nullptr)
+            {
+                bestNode = &nodes[i];
+            }
+            else
+            {
+                if(bestNode->potential < nodes[i].potential)
+                {
+                    bestNode = &nodes[i];
+                }
+            }
+        }
+
+        Expansion(*bestNode, nodes);
+    }
+    else
+    {
+        //fill with first layer and apply initial potential
+    }
 }
 
-void ChessSimulator::Expansion(std::string fen)
+void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
 {
-
+    //make random move based on current node
+    //simulate
+    //update potential and backpropigate
 }
 
 float ChessSimulator::Simulation(std::string fen, chess::Color rootColor)
