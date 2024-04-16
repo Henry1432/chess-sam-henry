@@ -8,6 +8,7 @@ struct mctsNode{
     std::string fen;
     float potential;
     mctsNode* parent;
+    chess::Movelist kidMoves;
 
     mctsNode()
     {
@@ -20,6 +21,11 @@ struct mctsNode{
         this->fen = std::move(fen);
         this->potential = potential;
         this->parent = &parent;
+    }
+
+    bool containsMove(chess::Move move)
+    {
+        return kidMoves.find(move) != -1;
     }
 };
 

@@ -69,9 +69,40 @@ void ChessSimulator::Selection(std::string fen, std::vector<mctsNode> nodes)
 
 void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
 {
-    //make random move based on current node
-    //simulate
-    //update potential and backpropigate
+    //first go at it! not tested
+    chess::Board board(node.fen);
+    chess::Movelist moves;
+    chess::movegen::legalmoves(moves, board);
+
+
+    std::random_device rd;
+    bool foundNewMove = false;
+    chess::Move move;
+    while (!foundNewMove)
+    {
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dist(0, moves.size() - 1);
+        move = moves[dist(gen)];
+
+        if(!node.containsMove(move))
+        {
+            foundNewMove = true;
+        }
+    }
+    //std::string fen, float potential, mctsNode parent
+    mctsNode tempNode(chess::uci::moveToUci(move), 0, node);
+    float potential = Simulation(tempNode.fen, board.sideToMove() == chess::Color::WHITE ? chess::Color::BLACK :chess::Color::WHITE);
+
+    tempNode.potential += potential;
+
+    mctsNode* backPropNode = tempNode.parent;
+    while(backPropNode != nullptr)
+    {
+        backPropNode->potential += potential;
+        backPropNode = backPropNode->parent;
+    }
+
+    nodes.push_back(tempNode);
 }
 
 float ChessSimulator::Simulation(std::string fen, chess::Color rootColor)
