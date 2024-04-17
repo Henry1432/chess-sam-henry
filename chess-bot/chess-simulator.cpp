@@ -64,6 +64,13 @@ void ChessSimulator::Selection(std::string fen, std::vector<mctsNode> nodes)
     else
     {
         //fill with first layer and apply initial potential
+
+        chess::Board board(fen);
+        chess::Movelist moves;
+        chess::movegen::legalmoves(moves, board);
+
+        mctsNode tempNode(fen, 0);
+        tempNode.openMoves = moves;
     }
 }
 
@@ -71,9 +78,6 @@ void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
 {
     //first go at it! not tested
     chess::Board board(node.fen);
-    chess::Movelist moves;
-    chess::movegen::legalmoves(moves, board);
-
 
     std::random_device rd;
     bool foundNewMove = false;
@@ -81,8 +85,8 @@ void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
     while (!foundNewMove)
     {
         std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dist(0, moves.size() - 1);
-        move = moves[dist(gen)];
+        std::uniform_int_distribution<> dist(0, node.openMoves.size() - 1);
+        move = node.openMoves[dist(gen)];
 
         if(!node.containsMove(move))
         {
@@ -90,7 +94,10 @@ void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
         }
     }
     //std::string fen, float potential, mctsNode parent
+        //below is assuming that uci is how you get fen
     mctsNode tempNode(chess::uci::moveToUci(move), 0, node);
+    chess::Board tempBoard(tempNode.fen);
+    chess::movegen::legalmoves(tempNode.openMoves, tempBoard);
     float potential = Simulation(tempNode.fen, board.sideToMove() == chess::Color::WHITE ? chess::Color::BLACK :chess::Color::WHITE);
 
     tempNode.potential += potential;
@@ -103,6 +110,24 @@ void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
     }
 
     nodes.push_back(tempNode);
+    node.foundMoves.add(move);
+
+    int moveIndex = node.openMoves.find(move);
+    chess::Movelist tempMoves;
+
+    if(moveIndex != -1)
+    {
+        for(int i = 0; i < node.openMoves.size(); i++)
+        {
+            if(i != moveIndex)
+            {
+                tempMoves.add(node.openMoves[i]);
+            }
+        }
+    }
+    node.openMoves.clear();
+    node.openMoves.empty();
+    node.openMoves = tempMoves;
 }
 
 float ChessSimulator::Simulation(std::string fen, chess::Color rootColor)
@@ -119,6 +144,7 @@ float ChessSimulator::Simulation(std::string fen, chess::Color rootColor)
         std::uniform_int_distribution<> dist(0, moves.size() - 1);
         auto move = moves[dist(gen)];
 
+             //below is assuming that uci is how you get fen
         return Simulation(chess::uci::moveToUci(move), rootColor);
     }
     else if (gameState == chess::GameResult::DRAW)
