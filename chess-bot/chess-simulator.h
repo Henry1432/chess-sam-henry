@@ -5,7 +5,8 @@
 #include "chess.hpp"
 
 struct mctsNode{
-    std::string fen;
+    chess::Board board;
+    chess::Move saveMove;
     float potential;
     mctsNode* parent;
     chess::Movelist openMoves;
@@ -13,20 +14,20 @@ struct mctsNode{
 
     mctsNode()
     {
-        fen = "";
         potential = std::numeric_limits<float>::infinity();
         parent = nullptr;
     }
-    mctsNode(std::string fen, float potential, mctsNode parent)
+    mctsNode(chess::Board board, chess::Move saveMove, float potential, mctsNode parent)
     {
-        this->fen = std::move(fen);
+        this->board = board;
+        this->saveMove = saveMove;
         this->potential = potential;
         this->parent = &parent;
     }
 
-    mctsNode(std::string fen, float potential)
+    mctsNode(chess::Board board, float potential)
     {
-        this->fen = std::move(fen);
+        this->board = board;
         this->potential = potential;
         this->parent = nullptr;
     }
@@ -34,6 +35,14 @@ struct mctsNode{
     bool containsMove(chess::Move move)
     {
         return foundMoves.find(move) != -1;
+    }
+
+    double getUCB(double c)
+    {
+        if((double)foundMoves.size() > 0)
+            return potential + 1 * sqrt(log((double)parent->foundMoves.size()/(double)foundMoves.size()));
+        else
+            return std::numeric_limits<double>::max();
     }
 };
 
@@ -45,7 +54,7 @@ namespace ChessSimulator {
  * @return std::string The move as UCI
  */
 std::string Move(std::string fen);
-void Selection(std::string fen, std::vector<mctsNode> nodes);
+void Selection(chess::Board board, std::vector<mctsNode> nodes);
 void Expansion(mctsNode node, std::vector<mctsNode> nodes);
-float Simulation(std::string fen, chess::Color rootColor);
+float Simulation(chess::Board board, chess::Color rootColor);
 } // namespace ChessSimulator

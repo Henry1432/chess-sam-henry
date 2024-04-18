@@ -25,66 +25,95 @@ std::string ChessSimulator::Move(std::string fen) {
     return "";
 
   std::vector<int> eval;
+  std::vector<mctsNode> nodes;
 
   for(int i =0; i < NUM_SIM; i++)
   {
-
+      Selection(board, nodes);
   }
 
-  // get random move
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<> dist(0, moves.size() - 1);
-  auto move = moves[dist(gen)];
-  return chess::uci::moveToUci(move);
+  mctsNode* pickNode = &nodes[0];
+
+  for(int i = 1; i < nodes.size(); i++)
+  {
+      if(pickNode->potential < nodes[i].potential)
+      {
+          pickNode = &nodes[i];
+      }
+  }
+
+  while(pickNode->parent->parent != nullptr)
+  {
+      pickNode = pickNode->parent;
+  }
+
+  return chess::uci::moveToUci(pickNode->saveMove);
 }
 
-void ChessSimulator::Selection(std::string fen, std::vector<mctsNode> nodes)
+//fen?
+void ChessSimulator::Selection(chess::Board board, std::vector<mctsNode> nodes)
 {
     if(!nodes.empty())
     {
-        mctsNode* bestNode = nullptr;
+        std::vector<mctsNode*> bestNode;
+        double UCB;
 
         for(int i = 0; i < nodes.size(); i++)
         {
-            if(bestNode == nullptr)
+            if(bestNode[0] == nullptr)
             {
-                bestNode = &nodes[i];
+                bestNode.push_back(&nodes[i]);
+                UCB = bestNode[0]->getUCB(2);
             }
             else
             {
-                double UCB = bestNode->potential + 1 * sqrt(log(bestNode->parent->foundMoves.size()/bestNode->foundMoves.size()));
-                double tempUCB = nodes[i].potential + 1 * sqrt(log(nodes[i].parent->foundMoves.size()/nodes[i].foundMoves.size()));
-                if(UCB < tempUCB)
+                double tempUCB = nodes[i].getUCB(2);
+
+                if(tempUCB == UCB)
                 {
-                    bestNode = &nodes[i];
+                    bestNode.push_back(&nodes[i]);
+                }
+                else if(UCB < tempUCB)
+                {
+                    bestNode.clear();
+                    bestNode.push_back(&nodes[i]);
+                    UCB = bestNode[0]->getUCB(2);
                 }
             }
         }
+        int index = 0;
+        if(bestNode.size() > 1)
+        {
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<> bestIndex(0, bestNode.size() - 1);
+            index = bestIndex(gen);
+        }
 
-        Expansion(*bestNode, nodes);
+        Expansion(*bestNode[index], nodes);
     }
     else
     {
         //fill with first layer and apply initial potential
 
-        chess::Board board(fen);
         chess::Movelist moves;
         chess::movegen::legalmoves(moves, board);
 
-        mctsNode tempNode(fen, 0);
+        mctsNode tempNode(board, 0);
         tempNode.openMoves = moves;
+
+        nodes.push_back(tempNode);
     }
 }
 
 void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
 {
     //first go at it! not tested
-    chess::Board board(node.fen);
 
     std::random_device rd;
     bool foundNewMove = false;
     chess::Move move;
+    //should only run once I believe
     while (!foundNewMove)
     {
         std::mt19937 gen(rd());
@@ -96,12 +125,11 @@ void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
             foundNewMove = true;
         }
     }
-    //std::string fen, float potential, mctsNode parent
-        //below is assuming that uci is how you get fen
-    mctsNode tempNode(chess::uci::moveToUci(move), 0, node);
-    chess::Board tempBoard(tempNode.fen);
+    chess::Board tempBoard(node.board);
+    tempBoard.makeMove(move);
+    mctsNode tempNode(tempBoard, move, 0, node);
     chess::movegen::legalmoves(tempNode.openMoves, tempBoard);
-    float potential = Simulation(tempNode.fen, board.sideToMove() == chess::Color::WHITE ? chess::Color::BLACK :chess::Color::WHITE);
+    float potential = Simulation(tempBoard, tempBoard.sideToMove());
 
     tempNode.potential += potential;
 
@@ -133,12 +161,9 @@ void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
     node.openMoves = tempMoves;
 }
 
-float ChessSimulator::Simulation(std::string fen, chess::Color rootColor)
+float ChessSimulator::Simulation(chess::Board board, chess::Color rootColor)
 {
-    //Checks who wins and returns correct value
-    chess::Board board(fen);
-    chess::GameResult gameState = board.isGameOver().second;
-    if(gameState == chess::GameResult::NONE)
+    while(board.isGameOver().second == chess::GameResult::NONE)
     {
         chess::Movelist moves;
         chess::movegen::legalmoves(moves, board);
@@ -146,11 +171,9 @@ float ChessSimulator::Simulation(std::string fen, chess::Color rootColor)
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> dist(0, moves.size() - 1);
         auto move = moves[dist(gen)];
-
-             //below is assuming that uci is how you get fen
-        return Simulation(chess::uci::moveToUci(move), rootColor);
+        board.makeMove(move);
     }
-    else if (gameState == chess::GameResult::DRAW)
+    if (board.isGameOver().second == chess::GameResult::DRAW)
     {
         return -0.5;
     }
