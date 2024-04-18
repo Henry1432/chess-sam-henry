@@ -4,6 +4,7 @@
 //#include "chess.hpp"
 //#include <random>
 #include <vector>
+#include <cmath>
 using namespace ChessSimulator;
 
 
@@ -52,7 +53,9 @@ void ChessSimulator::Selection(std::string fen, std::vector<mctsNode> nodes)
             }
             else
             {
-                if(bestNode->potential < nodes[i].potential)
+                double UCB = bestNode->potential + 1 * sqrt(log(bestNode->parent->foundMoves.size()/bestNode->foundMoves.size()));
+                double tempUCB = nodes[i].potential + 1 * sqrt(log(nodes[i].parent->foundMoves.size()/nodes[i].foundMoves.size()));
+                if(UCB < tempUCB)
                 {
                     bestNode = &nodes[i];
                 }
