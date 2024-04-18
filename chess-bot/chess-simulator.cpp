@@ -51,7 +51,7 @@ std::string ChessSimulator::Move(std::string fen) {
 }
 
 //fen?
-void ChessSimulator::Selection(chess::Board board, std::vector<mctsNode> nodes)
+void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes)
 {
     if(!nodes.empty())
     {
@@ -60,7 +60,7 @@ void ChessSimulator::Selection(chess::Board board, std::vector<mctsNode> nodes)
 
         for(int i = 0; i < nodes.size(); i++)
         {
-            if(bestNode[0] == nullptr)
+            if(bestNode.size() == 0)
             {
                 bestNode.push_back(&nodes[i]);
                 UCB = bestNode[0]->getUCB(2);
@@ -106,7 +106,7 @@ void ChessSimulator::Selection(chess::Board board, std::vector<mctsNode> nodes)
     }
 }
 
-void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
+void ChessSimulator::Expansion(mctsNode& node, std::vector<mctsNode>& nodes)
 {
     //first go at it! not tested
 
@@ -130,6 +130,7 @@ void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
     mctsNode tempNode(tempBoard, move, 0, node);
     chess::movegen::legalmoves(tempNode.openMoves, tempBoard);
     float potential = Simulation(tempBoard, tempBoard.sideToMove());
+            //Simulation(tempBoard, tempBoard.sideToMove());
 
     tempNode.potential += potential;
 
@@ -140,28 +141,11 @@ void ChessSimulator::Expansion(mctsNode node, std::vector<mctsNode> nodes)
         backPropNode = backPropNode->parent;
     }
 
+    node.found(move);
     nodes.push_back(tempNode);
-    node.foundMoves.add(move);
-
-    int moveIndex = node.openMoves.find(move);
-    chess::Movelist tempMoves;
-
-    if(moveIndex != -1)
-    {
-        for(int i = 0; i < node.openMoves.size(); i++)
-        {
-            if(i != moveIndex)
-            {
-                tempMoves.add(node.openMoves[i]);
-            }
-        }
-    }
-    node.openMoves.clear();
-    node.openMoves.empty();
-    node.openMoves = tempMoves;
 }
 
-float ChessSimulator::Simulation(chess::Board board, chess::Color rootColor)
+float ChessSimulator::Simulation(chess::Board& board, chess::Color rootColor)
 {
     while(board.isGameOver().second == chess::GameResult::NONE)
     {
