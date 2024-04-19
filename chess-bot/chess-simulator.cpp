@@ -90,7 +90,16 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
             index = bestIndex(gen);
         }
 
-        Expansion(*bestNode[index], nodes);
+        auto it = std::find(nodes.begin(), nodes.end(), *bestNode[index]);
+        int nodeIndex;
+        if(it != nodes.end())
+        {
+            nodeIndex = std::distance(nodes.begin(), it);
+        }
+        else
+            nodeIndex =-1;
+
+        Expansion(nodeIndex, nodes);
     }
     else
     {
@@ -100,13 +109,16 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
         chess::movegen::legalmoves(moves, board);
 
         mctsNode tempNode(board, 0);
-        tempNode.openMoves = moves;
+        for(int i = 0; i < moves.size(); i++)
+        {
+            tempNode.openMoves.push_back(moves[i]);
+        }
 
         nodes.push_back(tempNode);
     }
 }
 
-void ChessSimulator::Expansion(mctsNode& node, std::vector<mctsNode>& nodes)
+void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes)
 {
     //first go at it! not tested
 
@@ -117,32 +129,35 @@ void ChessSimulator::Expansion(mctsNode& node, std::vector<mctsNode>& nodes)
     while (!foundNewMove)
     {
         std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dist(0, node.openMoves.size() - 1);
-        move = node.openMoves[dist(gen)];
+        std::uniform_int_distribution<> dist(0, nodes[nodeIndex].openMoves.size() - 1);
+        move = nodes[nodeIndex].openMoves[dist(gen)];
 
-        if(!node.containsMove(move))
+        if(!nodes[nodeIndex].containsMove(move))
         {
             foundNewMove = true;
         }
     }
-    chess::Board tempBoard(node.board);
+    chess::Board tempBoard(nodes[nodeIndex].board);
     tempBoard.makeMove(move);
-    mctsNode tempNode(tempBoard, move, 0, node);
-    chess::movegen::legalmoves(tempNode.openMoves, tempBoard);
+    mctsNode tempNode(tempBoard, move, 0);
+
+    tempNode.genOpenMoves();
     float potential = Simulation(tempBoard, tempBoard.sideToMove());
             //Simulation(tempBoard, tempBoard.sideToMove());
 
     tempNode.potential += potential;
 
-    mctsNode* backPropNode = tempNode.parent;
+    mctsNode* backPropNode = &nodes[nodeIndex];
     while(backPropNode != nullptr)
     {
         backPropNode->potential += potential;
         backPropNode = backPropNode->parent;
     }
 
-    node.found(move);
+    nodes[nodeIndex].foundMoves.push_back(move);
+    std::remove(nodes[nodeIndex].openMoves.begin(), nodes[nodeIndex].openMoves.end(), move);
     nodes.push_back(tempNode);
+    nodes[nodes.size() - 1].parent = &nodes[nodeIndex];
 }
 
 float ChessSimulator::Simulation(chess::Board& board, chess::Color rootColor)

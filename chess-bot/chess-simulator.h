@@ -9,47 +9,76 @@ struct mctsNode{
     chess::Move saveMove;
     float potential;
     mctsNode* parent;
-    chess::Movelist openMoves;
-    chess::Movelist foundMoves;
+    std::vector<chess::Move> openMoves;
+    std::vector<chess::Move> foundMoves;
 
     mctsNode()
     {
         potential = std::numeric_limits<float>::infinity();
         parent = nullptr;
 
-        foundMoves = chess::Movelist();
-        openMoves = chess::Movelist();
+        foundMoves = std::vector<chess::Move>();
+        openMoves = std::vector<chess::Move>();
         foundMoves.clear();
         openMoves.clear();
     }
-    mctsNode(chess::Board board, chess::Move saveMove, float potential, mctsNode parent)
+    mctsNode(chess::Board& board, chess::Move& saveMove, float potential)
     {
         this->board = board;
         this->saveMove = saveMove;
         this->potential = potential;
-        this->parent = &parent;
+        this->parent = nullptr;
 
-        foundMoves = chess::Movelist();
-        openMoves = chess::Movelist();
+        foundMoves = std::vector<chess::Move>();
+        openMoves = std::vector<chess::Move>();
         foundMoves.clear();
         openMoves.clear();
     }
 
-    mctsNode(chess::Board board, float potential)
+    mctsNode(chess::Board& board, float potential)
     {
         this->board = board;
         this->potential = potential;
         this->parent = nullptr;
 
-        foundMoves = chess::Movelist();
-        openMoves = chess::Movelist();
+        foundMoves = std::vector<chess::Move>();
+        openMoves = std::vector<chess::Move>();
         foundMoves.clear();
         openMoves.clear();
     }
 
+    int findIndexInFound(chess::Move move)
+    {
+        auto it = std::find(foundMoves.begin(), foundMoves.end(), move);
+        int index;
+        if(it != foundMoves.end())
+        {
+            index = std::distance(foundMoves.begin(), it);
+        }
+        else
+            index =-1;
+
+        return index;
+    }
+    int findIndexInOpen(chess::Move move)
+    {
+        auto it = std::find(openMoves.begin(), openMoves.end(), move);
+        int index;
+        if(it != openMoves.end())
+        {
+            index = std::distance(openMoves.begin(), it);
+        }
+        else
+            index =-1;
+
+        return index;
+    }
+
+
     bool containsMove(chess::Move move)
     {
-        return foundMoves.find(move) != -1;
+        int index = findIndexInFound(move);
+        return index != -1;
     }
 
     double getUCB(double c)
@@ -60,31 +89,22 @@ struct mctsNode{
             return std::numeric_limits<double>::max();
     }
 
-    void found(chess::Move move)
+    void genOpenMoves()
     {
-        if(foundMoves.size() < 0)
-        {
-            chess::Movelist moves;
-            foundMoves = moves;
-        }
-        foundMoves.add(move);
+        openMoves.clear();
 
-        int moveIndex = openMoves.find(move);
-        chess::Movelist tempMoves;
+        chess::Movelist moves;
+        chess::movegen::legalmoves(moves, board);
 
-        if(moveIndex != -1)
+        for(int i = 0; i < moves.size(); i++)
         {
-            for(int i = 0; i < openMoves.size(); i++)
-            {
-                if(i != moveIndex)
-                {
-                    tempMoves.add(openMoves[i]);
-                }
-            }
-            openMoves.clear();
-            openMoves.empty();
-            openMoves = tempMoves;
+            openMoves.push_back(moves[i]);
         }
+    }
+
+    bool operator== (mctsNode rhs)
+    {
+        return saveMove == rhs.saveMove && potential == rhs.potential && parent == rhs.parent && openMoves == rhs.openMoves && foundMoves == rhs.foundMoves;
     }
 };
 
@@ -97,6 +117,6 @@ namespace ChessSimulator {
  */
 std::string Move(std::string fen);
 void Selection(chess::Board& board, std::vector<mctsNode>& nodes);
-void Expansion(mctsNode& node, std::vector<mctsNode>& nodes);
+void Expansion(int nodeIndex, std::vector<mctsNode>& nodes);
 float Simulation(chess::Board& board, chess::Color rootColor);
 } // namespace ChessSimulator
