@@ -9,7 +9,9 @@ using namespace ChessSimulator;
 
 
 std::string ChessSimulator::Move(std::string fen) {
-    int const NUM_SIM = 1000;
+    int const NUM_SIM = 200; //I am not sure what, but something is happening after 200 simulations, next step is optomization, it is agonizingly slow,
+                                // the problem could be some timing out thing because of how slow it is,
+                                    // might be a deeper issue but that would be more complex and Im hoping I can fix it by being a more efficient program.
   // create your board based on the board string following the FEN notation
   // search for the best move using minimax / monte carlo tree search /
   // alpha-beta pruning / ... try to use nice heuristics to speed up the search
@@ -42,9 +44,9 @@ std::string ChessSimulator::Move(std::string fen) {
       }
   }
 
-  while(pickNode->parent->parent != nullptr)
+  while(nodes[pickNode->parentIndex].parentIndex != -1)
   {
-      pickNode = pickNode->parent;
+      pickNode = &nodes[pickNode->parentIndex];
   }
 
   return chess::uci::moveToUci(pickNode->saveMove);
@@ -63,11 +65,11 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
             if(bestNode.size() == 0)
             {
                 bestNode.push_back(&nodes[i]);
-                UCB = bestNode[0]->getUCB(2);
+                UCB = bestNode[0]->getUCB(2, nodes);
             }
             else
             {
-                double tempUCB = nodes[i].getUCB(2);
+                double tempUCB = nodes[i].getUCB(2, nodes);
 
                 if(tempUCB == UCB)
                 {
@@ -77,7 +79,7 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
                 {
                     bestNode.clear();
                     bestNode.push_back(&nodes[i]);
-                    UCB = bestNode[0]->getUCB(2);
+                    UCB = bestNode[0]->getUCB(2, nodes);
                 }
             }
         }
@@ -151,13 +153,21 @@ void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes)
     while(backPropNode != nullptr)
     {
         backPropNode->potential += potential;
-        backPropNode = backPropNode->parent;
+        if(backPropNode->parentIndex != -1)
+        {
+            backPropNode = &nodes[backPropNode->parentIndex];
+        }
+        else
+        {
+            backPropNode = nullptr;
+        }
     }
 
     nodes[nodeIndex].foundMoves.push_back(move);
     std::remove(nodes[nodeIndex].openMoves.begin(), nodes[nodeIndex].openMoves.end(), move);
     nodes.push_back(tempNode);
-    nodes[nodes.size() - 1].parent = &nodes[nodeIndex];
+    //nodes[nodes.size() - 1].parent = &nodes[nodeIndex];
+    nodes[nodes.size() - 1].parentIndex = nodeIndex;
 }
 
 float ChessSimulator::Simulation(chess::Board& board, chess::Color rootColor)

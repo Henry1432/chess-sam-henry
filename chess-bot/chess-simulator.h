@@ -8,14 +8,16 @@ struct mctsNode{
     chess::Board board;
     chess::Move saveMove;
     float potential;
-    mctsNode* parent;
+    //mctsNode* parent;
+    int parentIndex;
     std::vector<chess::Move> openMoves;
     std::vector<chess::Move> foundMoves;
 
     mctsNode()
     {
         potential = std::numeric_limits<float>::infinity();
-        parent = nullptr;
+        //parent = nullptr;
+        parentIndex = -1;
 
         foundMoves = std::vector<chess::Move>();
         openMoves = std::vector<chess::Move>();
@@ -27,7 +29,8 @@ struct mctsNode{
         this->board = board;
         this->saveMove = saveMove;
         this->potential = potential;
-        this->parent = nullptr;
+        //this->parent = nullptr;
+        this->parentIndex = -1;
 
         foundMoves = std::vector<chess::Move>();
         openMoves = std::vector<chess::Move>();
@@ -39,7 +42,8 @@ struct mctsNode{
     {
         this->board = board;
         this->potential = potential;
-        this->parent = nullptr;
+        //this->parent = nullptr;
+        this->parentIndex = -1;
 
         foundMoves = std::vector<chess::Move>();
         openMoves = std::vector<chess::Move>();
@@ -81,10 +85,10 @@ struct mctsNode{
         return index != -1;
     }
 
-    double getUCB(double c)
+    double getUCB(double c, std::vector<mctsNode> nodes)
     {
-        if((double)foundMoves.size() > 0 && parent)
-            return potential + 1 * sqrt(log((double)parent->foundMoves.size()/(double)foundMoves.size()));
+        if((double)foundMoves.size() > 0 && parentIndex != -1)
+            return potential + 1 * sqrt(log((double)nodes[parentIndex].foundMoves.size()/(double)foundMoves.size()));
         else
             return std::numeric_limits<double>::max();
     }
@@ -104,7 +108,7 @@ struct mctsNode{
 
     bool operator== (mctsNode rhs)
     {
-        return saveMove == rhs.saveMove && potential == rhs.potential && parent == rhs.parent && openMoves == rhs.openMoves && foundMoves == rhs.foundMoves;
+        return saveMove == rhs.saveMove && potential == rhs.potential && parentIndex == rhs.parentIndex && openMoves == rhs.openMoves && foundMoves == rhs.foundMoves;
     }
 };
 
