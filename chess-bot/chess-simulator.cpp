@@ -9,7 +9,7 @@ using namespace ChessSimulator;
 
 
 std::string ChessSimulator::Move(std::string fen) {
-    int const NUM_SIM = 200; //I am not sure what, but something is happening after 200 simulations, next step is optomization, it is agonizingly slow,
+    int const NUM_SIM = 500; //I am not sure what, but something is happening after 200 simulations, next step is optomization, it is agonizingly slow,
                                 // the problem could be some timing out thing because of how slow it is,
                                     // might be a deeper issue but that would be more complex and Im hoping I can fix it by being a more efficient program.
   // create your board based on the board string following the FEN notation
@@ -123,51 +123,67 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
 void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes)
 {
     //first go at it! not tested
-
-    std::random_device rd;
-    bool foundNewMove = false;
-    chess::Move move;
-    //should only run once I believe
-    while (!foundNewMove)
+    if(nodeIndex >= 0)
     {
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dist(0, nodes[nodeIndex].openMoves.size() - 1);
-        move = nodes[nodeIndex].openMoves[dist(gen)];
-
-        if(!nodes[nodeIndex].containsMove(move))
+        if(nodes[nodeIndex].openMoves.size() > 0)
         {
-            foundNewMove = true;
+            std::random_device rd;
+            bool foundNewMove = false, loop = true;
+            chess::Move move;
+            int saveIndex;
+            int counter = 0;
+            //should only run once I believe
+            while (loop)
+            {
+                std::mt19937 gen(rd());
+                std::uniform_int_distribution<> dist(0, nodes[nodeIndex].openMoves.size() - 1);
+                saveIndex = dist(gen);
+                move = nodes[nodeIndex].openMoves[saveIndex];
+
+                if(!nodes[nodeIndex].containsMove(move))
+                {
+                    foundNewMove = true;
+                }
+
+                if(counter > 112 || foundNewMove)
+                {
+                    loop = false;
+                }
+            }
+            if(foundNewMove)
+            {
+                chess::Board tempBoard(nodes[nodeIndex].board);
+                tempBoard.makeMove(move);
+                mctsNode tempNode(tempBoard, move, 0);
+
+                tempNode.genOpenMoves();
+                float potential = Simulation(tempBoard, tempBoard.sideToMove());
+                        //Simulation(tempBoard, tempBoard.sideToMove());
+
+                tempNode.potential += potential;
+
+                mctsNode* backPropNode = &nodes[nodeIndex];
+                while(backPropNode != nullptr)
+                {
+                    backPropNode->potential += potential;
+                    if(backPropNode->parentIndex != -1)
+                    {
+                        backPropNode = &nodes[backPropNode->parentIndex];
+                    }
+                    else
+                    {
+                        backPropNode = nullptr;
+                    }
+                }
+
+                nodes[nodeIndex].foundMoves.push_back(move);
+                nodes[nodeIndex].openMoves.erase(nodes[nodeIndex].openMoves.begin() + saveIndex);
+                nodes.push_back(tempNode);
+                //nodes[nodes.size() - 1].parent = &nodes[nodeIndex];
+                nodes[nodes.size() - 1].parentIndex = nodeIndex;
+            }
         }
     }
-    chess::Board tempBoard(nodes[nodeIndex].board);
-    tempBoard.makeMove(move);
-    mctsNode tempNode(tempBoard, move, 0);
-
-    tempNode.genOpenMoves();
-    float potential = Simulation(tempBoard, tempBoard.sideToMove());
-            //Simulation(tempBoard, tempBoard.sideToMove());
-
-    tempNode.potential += potential;
-
-    mctsNode* backPropNode = &nodes[nodeIndex];
-    while(backPropNode != nullptr)
-    {
-        backPropNode->potential += potential;
-        if(backPropNode->parentIndex != -1)
-        {
-            backPropNode = &nodes[backPropNode->parentIndex];
-        }
-        else
-        {
-            backPropNode = nullptr;
-        }
-    }
-
-    nodes[nodeIndex].foundMoves.push_back(move);
-    std::remove(nodes[nodeIndex].openMoves.begin(), nodes[nodeIndex].openMoves.end(), move);
-    nodes.push_back(tempNode);
-    //nodes[nodes.size() - 1].parent = &nodes[nodeIndex];
-    nodes[nodes.size() - 1].parentIndex = nodeIndex;
 }
 
 float ChessSimulator::Simulation(chess::Board& board, chess::Color rootColor)
