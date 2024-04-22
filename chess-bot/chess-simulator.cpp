@@ -1,4 +1,5 @@
 #include "chess-simulator.h"
+#include <chrono>
 // disservin's lib. drop a star on his hard work!
 // https://github.com/Disservin/chess-library
 //#include "chess.hpp"
@@ -7,9 +8,8 @@
 #include <cmath>
 using namespace ChessSimulator;
 
-
 std::string ChessSimulator::Move(std::string fen) {
-    int const NUM_SIM = 500;
+    int const NUM_SIM = 550;
   // create your board based on the board string following the FEN notation
   // search for the best move using minimax / monte carlo tree search /
   // alpha-beta pruning / ... try to use nice heuristics to speed up the search
@@ -18,7 +18,8 @@ std::string ChessSimulator::Move(std::string fen) {
   // using the one provided by the library
 
   // here goes a random movement
-  chess::Board board(fen);
+
+    chess::Board board(fen);
   chess::Movelist moves;
   chess::movegen::legalmoves(moves, board);
   if(moves.size() == 0)
@@ -55,6 +56,7 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
 {
     if(!nodes.empty())
     {
+        //selection process is da problem! fix it pweaz :(
         std::vector<mctsNode*> bestNode;
         double UCB;
 
@@ -100,6 +102,8 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
             nodeIndex =-1;
 
         Expansion(nodeIndex, nodes);
+
+        //std::cout << duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()) << std::endl;
     }
     else
     {
@@ -125,12 +129,17 @@ void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes)
     {
         if(nodes[nodeIndex].openMoves.size() > 0)
         {
-            std::random_device rd;
-            bool foundNewMove = false, loop = true;
+            //std::random_device rd; //commented for open tasting
+            bool foundNewMove = true;//, loop = true; //commented for open tasting
             chess::Move move;
-            int saveIndex;
-            int counter = 0;
-            //should only run once I believe
+            //int saveIndex;//commented for open tasting
+            //int counter = 0;//commented for open tasting
+
+            move = nodes[nodeIndex].openMoves[nodes[nodeIndex].openMoves.size()-1];
+
+
+            /*
+             * testing standardized open picking
             while (loop)
             {
                 std::mt19937 gen(rd());
@@ -148,38 +157,40 @@ void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes)
                     loop = false;
                 }
             }
-            if(foundNewMove)
+             */
+            //if(foundNewMove)
+            //{
+            chess::Board tempBoard(nodes[nodeIndex].board);
+            tempBoard.makeMove(move);
+            mctsNode tempNode(tempBoard, move, 0);
+
+            tempNode.genOpenMoves();
+            float potential = Simulation(tempBoard, tempBoard.sideToMove());
+                    //Simulation(tempBoard, tempBoard.sideToMove());
+
+            tempNode.potential += potential;
+
+            mctsNode* backPropNode = &nodes[nodeIndex];
+            while(backPropNode != nullptr)
             {
-                chess::Board tempBoard(nodes[nodeIndex].board);
-                tempBoard.makeMove(move);
-                mctsNode tempNode(tempBoard, move, 0);
-
-                tempNode.genOpenMoves();
-                float potential = Simulation(tempBoard, tempBoard.sideToMove());
-                        //Simulation(tempBoard, tempBoard.sideToMove());
-
-                tempNode.potential += potential;
-
-                mctsNode* backPropNode = &nodes[nodeIndex];
-                while(backPropNode != nullptr)
+                backPropNode->potential += potential;
+                if(backPropNode->parentIndex != -1)
                 {
-                    backPropNode->potential += potential;
-                    if(backPropNode->parentIndex != -1)
-                    {
-                        backPropNode = &nodes[backPropNode->parentIndex];
-                    }
-                    else
-                    {
-                        backPropNode = nullptr;
-                    }
+                    backPropNode = &nodes[backPropNode->parentIndex];
                 }
-
-                nodes[nodeIndex].foundMoves.push_back(move);
-                nodes[nodeIndex].openMoves.erase(nodes[nodeIndex].openMoves.begin() + saveIndex);
-                nodes.push_back(tempNode);
-                //nodes[nodes.size() - 1].parent = &nodes[nodeIndex];
-                nodes[nodes.size() - 1].parentIndex = nodeIndex;
+                else
+                {
+                    backPropNode = nullptr;
+                }
             }
+
+            nodes[nodeIndex].foundMoves.push_back(move);
+            nodes[nodeIndex].openMoves.erase(nodes[nodeIndex].openMoves.end());
+            //nodes[nodeIndex].openMoves.erase(nodes[nodeIndex].openMoves.begin() + saveIndex);
+            nodes.push_back(tempNode);
+            //nodes[nodes.size() - 1].parent = &nodes[nodeIndex];
+            nodes[nodes.size() - 1].parentIndex = nodeIndex;
+            //}
         }
     }
 }
