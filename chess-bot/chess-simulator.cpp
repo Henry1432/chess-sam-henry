@@ -9,7 +9,7 @@
 using namespace ChessSimulator;
 
 std::string ChessSimulator::Move(std::string fen) {
-    int const NUM_SIM = 550;
+    int const NUM_SIM = 25000;
   // create your board based on the board string following the FEN notation
   // search for the best move using minimax / monte carlo tree search /
   // alpha-beta pruning / ... try to use nice heuristics to speed up the search
@@ -27,11 +27,14 @@ std::string ChessSimulator::Move(std::string fen) {
 
   std::vector<int> eval;
   std::vector<mctsNode> nodes;
-
-  for(int i =0; i < NUM_SIM; i++)
+  auto timer = std::chrono::system_clock::now();
+  int count = 0;
+  while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timer).count() < 9899)
   {
       Selection(board, nodes);
+      count++;
   }
+  std::cout<<count << std::endl;
 
   mctsNode* pickNode = &nodes[0];
 
@@ -84,13 +87,14 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
             }
         }
         int index = 0;
-        if(bestNode.size() > 1)
+        /*if(bestNode.size() > 1)
         {
             std::random_device rd;
             std::mt19937 gen(rd());
             std::uniform_int_distribution<> bestIndex(0, bestNode.size() - 1);
             index = bestIndex(gen);
-        }
+        }*/
+
 
         auto it = std::find(nodes.begin(), nodes.end(), *bestNode[index]);
         int nodeIndex;
@@ -100,7 +104,6 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
         }
         else
             nodeIndex =-1;
-
         Expansion(nodeIndex, nodes);
 
         //std::cout << duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()) << std::endl;
