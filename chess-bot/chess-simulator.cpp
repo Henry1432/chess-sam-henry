@@ -8,6 +8,20 @@
 #include <cmath>
 using namespace ChessSimulator;
 
+int ChessSimulator::getRandNum(int seed, int min, int max)
+{
+    int value = 0;
+    for (int x = 0; x < 100; x++)
+    {
+        seed ^= seed << 13;
+        seed ^= seed >> 17;
+        seed ^= seed << 5;
+        value = min + (seed % (max));
+    }
+
+    return abs(value);
+}
+
 std::string ChessSimulator::Move(std::string fen) {
     int const NUM_SIM = 25000;
     int r = 0;
@@ -30,12 +44,12 @@ std::string ChessSimulator::Move(std::string fen) {
   std::vector<mctsNode> nodes;
   auto timer = std::chrono::system_clock::now();
   int count = 0;
-  while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timer).count() < 9989)
+  while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timer).count() < 9850)
   {
-      Selection(board, nodes, r);
+      Selection(board, nodes);
       count++;
   }
-  //std::cout<<count << "\t";
+  std::cout<<count << "\t";
   //std::cout<<r<<std::endl;
 
   mctsNode* pickNode = &nodes[0];
@@ -57,7 +71,7 @@ std::string ChessSimulator::Move(std::string fen) {
 }
 
 //fen?
-void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes, int& r)
+void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes)
 {
     if(!nodes.empty())
     {
@@ -67,15 +81,15 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
 
         for(int i = 0; i < nodes.size(); i++)
         {
+            double tempUCB = nodes[i].getUCB(2, nodes);
+
             if(bestNode.size() == 0)
             {
                 bestNode.push_back(i);
-                UCB = nodes[bestNode[0]].getUCB(2, nodes);
+                UCB = tempUCB;
             }
             else if (nodes[i].openMoves.size() > 0)
             {
-                double tempUCB = nodes[i].getUCB(2, nodes);
-
                 if(tempUCB == UCB)
                 {
                     bestNode.push_back(i);
@@ -84,14 +98,14 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
                 {
                     bestNode.clear();
                     bestNode.push_back(i);
-                    UCB = nodes[bestNode[0]].getUCB(2, nodes);
+                    UCB = tempUCB;
                 }
             }
         }
-
-        int randIndex = bestNode.size()/2;
-        Expansion(bestNode[randIndex], nodes, r);
-
+        int now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        int seed = (now ^ 31) % now/2.8914573;
+        int randIndex = ChessSimulator::getRandNum(seed, 0, bestNode.size());
+        Expansion(bestNode[randIndex], nodes);
         //std::cout << duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()) << std::endl;
     }
     else
@@ -111,7 +125,7 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
     }
 }
 
-void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes, int& r)
+void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes)
 {
     //first go at it! not tested
     if(nodeIndex >= 0)
@@ -154,7 +168,7 @@ void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes, int&
             mctsNode tempNode(tempBoard, move, 0);
 
             tempNode.genOpenMoves();
-            float potential = Simulation(tempBoard, tempBoard.sideToMove(), r);
+            float potential = Simulation(tempBoard, tempBoard.sideToMove());
                     //Simulation(tempBoard, tempBoard.sideToMove());
 
             tempNode.potential += potential;
@@ -184,34 +198,125 @@ void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes, int&
     }
 }
 
-float ChessSimulator::Simulation(chess::Board& board, chess::Color rootColor, int& r)
+float ChessSimulator::Simulation(chess::Board& board, chess::Color rootColor)
 {
-    r++;
+    float h = HTest(board, rootColor);
     while(board.isGameOver().second == chess::GameResult::NONE)
     {
         chess::Movelist moves;
         chess::movegen::legalmoves(moves, board);
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dist(0, moves.size() - 1);
-        auto move = moves[dist(gen)];
+        int now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        int seed = (now ^ 31) % now/2.8914573;
+        int randIndex = ChessSimulator::getRandNum(seed, 0, moves.size());
+
+        auto move = moves[randIndex];
         board.makeMove(move);
     }
     if (board.isGameOver().second == chess::GameResult::DRAW)
     {
-        return -0.5;
+        return -0.5 + h;
     }
     else
     {
         chess::Color attackColor = rootColor == chess::Color::WHITE ? chess::Color::BLACK : chess::Color::WHITE;
         if(board.isAttacked(board.kingSq(rootColor), attackColor))
         {
-            return -1;
+            return -1 + h;
         }
-        return 1;
+        return 1 + h;
     }
 }
 
+float ChessSimulator::HTest(chess::Board &board, chess::Color color)
+{
+    //board.pieces(chess::PieceType::KING, color).lsb();
+    float value = 0;
+
+    if(board.pieces(chess::PieceType::PAWN, color) != chess::Bitboard(0))
+    {
+        chess::Square sPawn = board.pieces(chess::PieceType::PAWN, color).lsb();
+        if(board.isAttacked(sPawn, ~color))
+        {
+            value -= 0.1f;
+        }
+    }
+    if(board.pieces(chess::PieceType::KNIGHT, color) != chess::Bitboard(0))
+    {
+        chess::Square sKnight = board.pieces(chess::PieceType::KNIGHT, color).lsb();
+        if(board.isAttacked(sKnight, ~color))
+        {
+            value -= 0.3f;
+        }
+    }
+    if(board.pieces(chess::PieceType::BISHOP, color) != chess::Bitboard(0))
+    {
+        chess::Square sBish = board.pieces(chess::PieceType::BISHOP, color).lsb();
+        if(board.isAttacked(sBish, ~color))
+        {
+            value -= 0.3f;
+        }
+    }
+    if(board.pieces(chess::PieceType::ROOK, color) != chess::Bitboard(0))
+    {
+        chess::Square sRook = board.pieces(chess::PieceType::ROOK, color).lsb();
+        if(board.isAttacked(sRook, ~color))
+        {
+            value -= 0.3f;
+        }
+    }
+    if(board.pieces(chess::PieceType::QUEEN, color) != chess::Bitboard(0))
+    {
+        chess::Square sQueen = board.pieces(chess::PieceType::QUEEN, color).lsb();
+        if(board.isAttacked(sQueen, ~color))
+        {
+            value -= 0.5f;
+        }
+    }
+
+
+    if(board.pieces(chess::PieceType::PAWN, ~color) != chess::Bitboard(0))
+    {
+        chess::Square sPawn = board.pieces(chess::PieceType::PAWN, ~color).lsb();
+        if(board.isAttacked(sPawn, color))
+        {
+            value += 0.2f;
+        }
+    }
+    if(board.pieces(chess::PieceType::KNIGHT, ~color) != chess::Bitboard(0))
+    {
+        chess::Square sKnight = board.pieces(chess::PieceType::KNIGHT, ~color).lsb();
+        if(board.isAttacked(sKnight, color))
+        {
+            value += 0.5f;
+        }
+    }
+    if(board.pieces(chess::PieceType::BISHOP, ~color) != chess::Bitboard(0))
+    {
+        chess::Square sBish = board.pieces(chess::PieceType::BISHOP, ~color).lsb();
+        if(board.isAttacked(sBish, color))
+        {
+            value += 0.3f;
+        }
+    }
+    if(board.pieces(chess::PieceType::ROOK, ~color) != chess::Bitboard(0))
+    {
+        chess::Square sRook = board.pieces(chess::PieceType::ROOK, ~color).lsb();
+        if(board.isAttacked(sRook, color))
+        {
+            value += 0.5f;
+        }
+    }
+    if(board.pieces(chess::PieceType::QUEEN, ~color) != chess::Bitboard(0))
+    {
+        chess::Square sQueen = board.pieces(chess::PieceType::QUEEN, ~color).lsb();
+        if(board.isAttacked(sQueen, color))
+        {
+            value += 0.8f;
+        }
+    }
+
+    return value;
+}
 //steps each being its own function
     //simulate all layer 1 moves
     //loop this move until we run out of time

@@ -2,6 +2,8 @@
 #include <string>
 #include <random>
 #include <utility>
+#include <cstdint>
+#include <bitset>
 #include "chess.hpp"
 
 struct mctsNode{
@@ -112,6 +114,7 @@ struct mctsNode{
     }
 };
 
+
 namespace ChessSimulator {
 /**
  * @brief Move a piece on the board
@@ -119,8 +122,14 @@ namespace ChessSimulator {
  * @param fen The board as FEN
  * @return std::string The move as UCI
  */
+int getRandNum(int seed, int min, int max);
+
 std::string Move(std::string fen);
-void Selection(chess::Board& board, std::vector<mctsNode>& nodes, int& r);
-void Expansion(int nodeIndex, std::vector<mctsNode>& nodes, int& r);
-float Simulation(chess::Board& board, chess::Color rootColor, int& r);
+void Selection(chess::Board& board, std::vector<mctsNode>& nodes);
+void Expansion(int nodeIndex, std::vector<mctsNode>& nodes);
+float Simulation(chess::Board& board, chess::Color rootColor);
+
+float HTest(chess::Board& board, chess::Color color);
+
+const double LIMIT = std::numeric_limits<double>::max();
 } // namespace ChessSimulator
