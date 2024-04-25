@@ -10,6 +10,7 @@ using namespace ChessSimulator;
 
 std::string ChessSimulator::Move(std::string fen) {
     int const NUM_SIM = 25000;
+    int r = 0;
   // create your board based on the board string following the FEN notation
   // search for the best move using minimax / monte carlo tree search /
   // alpha-beta pruning / ... try to use nice heuristics to speed up the search
@@ -29,12 +30,13 @@ std::string ChessSimulator::Move(std::string fen) {
   std::vector<mctsNode> nodes;
   auto timer = std::chrono::system_clock::now();
   int count = 0;
-  while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timer).count() < 9899)
+  while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timer).count() < 9989)
   {
-      Selection(board, nodes);
+      Selection(board, nodes, r);
       count++;
   }
-  std::cout<<count << std::endl;
+  //std::cout<<count << "\t";
+  //std::cout<<r<<std::endl;
 
   mctsNode* pickNode = &nodes[0];
 
@@ -55,56 +57,40 @@ std::string ChessSimulator::Move(std::string fen) {
 }
 
 //fen?
-void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes)
+void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes, int& r)
 {
     if(!nodes.empty())
     {
         //selection process is da problem! fix it pweaz :(
-        std::vector<mctsNode*> bestNode;
+        std::vector<int> bestNode;
         double UCB;
 
         for(int i = 0; i < nodes.size(); i++)
         {
             if(bestNode.size() == 0)
             {
-                bestNode.push_back(&nodes[i]);
-                UCB = bestNode[0]->getUCB(2, nodes);
+                bestNode.push_back(i);
+                UCB = nodes[bestNode[0]].getUCB(2, nodes);
             }
-            else
+            else if (nodes[i].openMoves.size() > 0)
             {
                 double tempUCB = nodes[i].getUCB(2, nodes);
 
                 if(tempUCB == UCB)
                 {
-                    bestNode.push_back(&nodes[i]);
+                    bestNode.push_back(i);
                 }
                 else if(UCB < tempUCB)
                 {
                     bestNode.clear();
-                    bestNode.push_back(&nodes[i]);
-                    UCB = bestNode[0]->getUCB(2, nodes);
+                    bestNode.push_back(i);
+                    UCB = nodes[bestNode[0]].getUCB(2, nodes);
                 }
             }
         }
-        int index = 0;
-        /*if(bestNode.size() > 1)
-        {
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::uniform_int_distribution<> bestIndex(0, bestNode.size() - 1);
-            index = bestIndex(gen);
-        }*/
 
-
-        auto it = std::find(nodes.begin(), nodes.end(), *bestNode[index]);
-        int nodeIndex;
-        if(it != nodes.end())
-        {
-            nodeIndex = std::distance(nodes.begin(), it);
-        }
-        else
-            nodeIndex =-1;
-        Expansion(nodeIndex, nodes);
+        int randIndex = bestNode.size()/2;
+        Expansion(bestNode[randIndex], nodes, r);
 
         //std::cout << duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()) << std::endl;
     }
@@ -125,7 +111,7 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
     }
 }
 
-void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes)
+void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes, int& r)
 {
     //first go at it! not tested
     if(nodeIndex >= 0)
@@ -168,7 +154,7 @@ void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes)
             mctsNode tempNode(tempBoard, move, 0);
 
             tempNode.genOpenMoves();
-            float potential = Simulation(tempBoard, tempBoard.sideToMove());
+            float potential = Simulation(tempBoard, tempBoard.sideToMove(), r);
                     //Simulation(tempBoard, tempBoard.sideToMove());
 
             tempNode.potential += potential;
@@ -198,8 +184,9 @@ void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes)
     }
 }
 
-float ChessSimulator::Simulation(chess::Board& board, chess::Color rootColor)
+float ChessSimulator::Simulation(chess::Board& board, chess::Color rootColor, int& r)
 {
+    r++;
     while(board.isGameOver().second == chess::GameResult::NONE)
     {
         chess::Movelist moves;

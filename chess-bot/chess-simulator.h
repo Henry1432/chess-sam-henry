@@ -120,7 +120,7 @@ namespace ChessSimulator {
  * @return std::string The move as UCI
  */
 std::string Move(std::string fen);
-void Selection(chess::Board& board, std::vector<mctsNode>& nodes);
-void Expansion(int nodeIndex, std::vector<mctsNode>& nodes);
-float Simulation(chess::Board& board, chess::Color rootColor);
+void Selection(chess::Board& board, std::vector<mctsNode>& nodes, int& r);
+void Expansion(int nodeIndex, std::vector<mctsNode>& nodes, int& r);
+float Simulation(chess::Board& board, chess::Color rootColor, int& r);
 } // namespace ChessSimulator
