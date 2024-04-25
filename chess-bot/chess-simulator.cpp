@@ -21,10 +21,10 @@ std::string ChessSimulator::Move(std::string fen) {
   // here goes a random movement
 
     chess::Board board(fen);
-  chess::Movelist moves;
-  chess::movegen::legalmoves(moves, board);
-  if(moves.size() == 0)
-    return "";
+    chess::Movelist moves;
+    chess::movegen::legalmoves(moves, board);
+    if(moves.size() == 0)
+        return "";
 
   std::vector<int> eval;
   std::vector<mctsNode> nodes;
@@ -38,22 +38,21 @@ std::string ChessSimulator::Move(std::string fen) {
   //std::cout<<count << "\t";
   //std::cout<<r<<std::endl;
 
-  mctsNode* pickNode = &nodes[0];
+    mctsNode* pickNode = &nodes[0];
 
-  for(int i = 1; i < nodes.size(); i++)
-  {
-      if(pickNode->potential < nodes[i].potential)
-      {
-          pickNode = &nodes[i];
-      }
-  }
+    for(int i = 1; i < nodes.size(); i++)
+    {
+        if(pickNode->potential < nodes[i].potential)
+          {
+              pickNode = &nodes[i];
+        }
+    }
 
-  while(nodes[pickNode->parentIndex].parentIndex != -1)
-  {
-      pickNode = &nodes[pickNode->parentIndex];
-  }
-
-  return chess::uci::moveToUci(pickNode->saveMove);
+    while(nodes[pickNode->parentIndex].parentIndex != -1)
+    {
+       pickNode = &nodes[pickNode->parentIndex];
+    }
+    return chess::uci::moveToUci(pickNode->saveMove);
 }
 
 //fen?
@@ -94,6 +93,8 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
 
         //std::cout << duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()) << std::endl;
     }
+
+
     else
     {
         //fill with first layer and apply initial potential
@@ -108,6 +109,50 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
         }
 
         nodes.push_back(tempNode);
+    }
+}*/
+
+void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes) {
+    // If the tree is empty, fill it with the first layer and apply initial potential
+    if (nodes.empty()) {
+        chess::Movelist moves;
+        chess::movegen::legalmoves(moves, board);
+
+        for (int i = 0; i < moves.size(); ++i) {
+            mctsNode tempNode(board, moves[i], 0);
+            tempNode.genOpenMoves();
+            float potential = Simulation(board, board.sideToMove());
+            tempNode.potential += potential;
+            nodes.push_back(tempNode);
+        }
+    } else {
+        // Traverse the tree until a leaf node is reached
+        mctsNode* currentNode = &nodes[0];
+        int nodeIndex = 0;
+        while (!currentNode->openMoves.empty()) {
+            double maxUCB = -std::numeric_limits<double>::infinity();
+            int bestChildIndex = -1;
+
+            // Calculate UCB for each child node and select the one with the highest UCB
+            for (int i = 0; i < currentNode->openMoves.size(); ++i) {
+                double UCB = currentNode->getUCB(i, nodes);
+                if (UCB > maxUCB) {
+                    maxUCB = UCB;
+                    bestChildIndex = i;
+                }
+            }
+
+            // If all children have been visited, expand the node
+            if (bestChildIndex == -1) {
+                Expansion(nodeIndex, nodes);
+                // Select one of the newly expanded nodes
+                bestChildIndex = currentNode->children.size() - 1;
+            }
+
+            // Move to the selected child node
+            nodeIndex = currentNode->children[bestChildIndex].index;
+            currentNode = &nodes[nodeIndex];
+        }
     }
 }
 
