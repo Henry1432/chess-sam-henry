@@ -44,7 +44,7 @@ std::string ChessSimulator::Move(std::string fen) {
   std::vector<mctsNode> nodes;
   auto timer = std::chrono::system_clock::now();
   int count = 0;
-  while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timer).count() < 9850)
+  while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timer).count() < 9800)
   {
       try
       {
@@ -56,7 +56,7 @@ std::string ChessSimulator::Move(std::string fen) {
           std::cout<<"selection fail\n";
       }
   }
-  std::cout<<count << "\t";
+  //std::cout<<count << "\t";
   //std::cout<<r<<std::endl;
 
     mctsNode* pickNode = &nodes[1];
@@ -75,16 +75,8 @@ std::string ChessSimulator::Move(std::string fen) {
             }
         }
     }
-    int counter = 0;
     while(nodes[pickNode->parentIndex].parentIndex != -1)
     {
-        std::cout << ".";
-        counter++;
-
-        if(counter > 100)
-        {
-            std::cout << "problem";
-        }
         if(pickNode->parentIndex < nodes.size())
         {
             pickNode = &nodes[pickNode->parentIndex];
@@ -93,13 +85,6 @@ std::string ChessSimulator::Move(std::string fen) {
     counter = 0;
     while(nodes[backupNode->parentIndex].parentIndex != -1)
     {
-        std::cout << ",";
-        counter++;
-
-        if(counter > 100)
-        {
-            std::cout << "problem";
-        }
         if(backupNode->parentIndex < nodes.size())
         {
             backupNode = &nodes[backupNode->parentIndex];
