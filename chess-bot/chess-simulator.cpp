@@ -46,27 +46,73 @@ std::string ChessSimulator::Move(std::string fen) {
   int count = 0;
   while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timer).count() < 9850)
   {
-      Selection(board, nodes);
-      count++;
+      try
+      {
+        Selection(board, nodes);
+        count++;
+      }
+      catch(...)
+      {
+          std::cout<<"selection fail\n";
+      }
   }
   std::cout<<count << "\t";
   //std::cout<<r<<std::endl;
 
-    mctsNode* pickNode = &nodes[0];
+    mctsNode* pickNode = &nodes[1];
+    mctsNode* backupNode = &nodes[2];
+
 
     for(int i = 1; i < nodes.size(); i++)
     {
-        if(pickNode->potential < nodes[i].potential)
-          {
-              pickNode = &nodes[i];
+        if(pickNode->potential < nodes[i].potential && nodes[i].parentIndex != -1)
+        {
+            backupNode = pickNode;
+            pickNode = &nodes[i];
+            if(backupNode->parentIndex == -1)
+            {
+                backupNode = pickNode;
+            }
+        }
+    }
+    int counter = 0;
+    while(nodes[pickNode->parentIndex].parentIndex != -1)
+    {
+        std::cout << ".";
+        counter++;
+
+        if(counter > 100)
+        {
+            std::cout << "problem";
+        }
+        if(pickNode->parentIndex < nodes.size())
+        {
+            pickNode = &nodes[pickNode->parentIndex];
+        }
+    }
+    counter = 0;
+    while(nodes[backupNode->parentIndex].parentIndex != -1)
+    {
+        std::cout << ",";
+        counter++;
+
+        if(counter > 100)
+        {
+            std::cout << "problem";
+        }
+        if(backupNode->parentIndex < nodes.size())
+        {
+            backupNode = &nodes[backupNode->parentIndex];
         }
     }
 
-    while(nodes[pickNode->parentIndex].parentIndex != -1)
+    if(board.at(pickNode->saveMove.from()).color() == board.sideToMove())
     {
-       pickNode = &nodes[pickNode->parentIndex];
+        return chess::uci::moveToUci(pickNode->saveMove);
     }
-    return chess::uci::moveToUci(pickNode->saveMove);
+    else
+        return chess::uci::moveToUci(backupNode->saveMove);
+
 }
 
 //fen?
@@ -104,7 +150,15 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
         int now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         int seed = (now ^ 31) % now/2.8914573;
         int randIndex = ChessSimulator::getRandNum(seed, 0, bestNode.size());
-        Expansion(bestNode[randIndex], nodes);
+        try
+        {
+            if(randIndex < nodes.size())
+                Expansion(bestNode[randIndex], nodes);
+        }
+        catch(...)
+        {
+            std::cout << "expansion failed\n";
+        }
         //std::cout << duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()) << std::endl;
     }
 
@@ -123,50 +177,6 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
         }
 
         nodes.push_back(tempNode);
-    }
-}*/
-
-void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes) {
-    // If the tree is empty, fill it with the first layer and apply initial potential
-    if (nodes.empty()) {
-        chess::Movelist moves;
-        chess::movegen::legalmoves(moves, board);
-
-        for (int i = 0; i < moves.size(); ++i) {
-            mctsNode tempNode(board, moves[i], 0);
-            tempNode.genOpenMoves();
-            float potential = Simulation(board, board.sideToMove());
-            tempNode.potential += potential;
-            nodes.push_back(tempNode);
-        }
-    } else {
-        // Traverse the tree until a leaf node is reached
-        mctsNode* currentNode = &nodes[0];
-        int nodeIndex = 0;
-        while (!currentNode->openMoves.empty()) {
-            double maxUCB = -std::numeric_limits<double>::infinity();
-            int bestChildIndex = -1;
-
-            // Calculate UCB for each child node and select the one with the highest UCB
-            for (int i = 0; i < currentNode->openMoves.size(); ++i) {
-                double UCB = currentNode->getUCB(i, nodes);
-                if (UCB > maxUCB) {
-                    maxUCB = UCB;
-                    bestChildIndex = i;
-                }
-            }
-
-            // If all children have been visited, expand the node
-            if (bestChildIndex == -1) {
-                Expansion(nodeIndex, nodes);
-                // Select one of the newly expanded nodes
-                bestChildIndex = currentNode->children.size() - 1;
-            }
-
-            // Move to the selected child node
-            nodeIndex = currentNode->children[bestChildIndex].index;
-            currentNode = &nodes[nodeIndex];
-        }
     }
 }
 
@@ -213,7 +223,7 @@ void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes)
             mctsNode tempNode(tempBoard, move, 0);
 
             tempNode.genOpenMoves();
-            float potential = Simulation(tempBoard, tempBoard.sideToMove());
+            float potential = Simulation(nodes, nodeIndex, tempBoard, tempBoard.sideToMove());
                     //Simulation(tempBoard, tempBoard.sideToMove());
 
             tempNode.potential += potential;
@@ -243,9 +253,9 @@ void ChessSimulator::Expansion(int nodeIndex, std::vector<mctsNode>& nodes)
     }
 }
 
-float ChessSimulator::Simulation(chess::Board& board, chess::Color rootColor)
+float ChessSimulator::Simulation(std::vector<mctsNode>& nodes, int nodeIndex, chess::Board& board, chess::Color rootColor)
 {
-    float h = HTest(board, rootColor);
+    float h = HTest(nodes, nodeIndex, board, rootColor);
     while(board.isGameOver().second == chess::GameResult::NONE)
     {
         chess::Movelist moves;
@@ -259,62 +269,68 @@ float ChessSimulator::Simulation(chess::Board& board, chess::Color rootColor)
     }
     if (board.isGameOver().second == chess::GameResult::DRAW)
     {
-        return -0.5 + h;
+        return h;
     }
     else
     {
         chess::Color attackColor = rootColor == chess::Color::WHITE ? chess::Color::BLACK : chess::Color::WHITE;
         if(board.isAttacked(board.kingSq(rootColor), attackColor))
         {
-            return -1 + h;
+            return -5 + h;
         }
-        return 1 + h;
+        return 5 + h;
     }
 }
 
-float ChessSimulator::HTest(chess::Board &board, chess::Color color)
+float ChessSimulator::HTest(std::vector<mctsNode>& nodes, int nodeIndex, chess::Board &board, chess::Color color)
 {
     //board.pieces(chess::PieceType::KING, color).lsb();
     float value = 0;
+    int pPieceCount = 0, ePieceCount = 0;
 
     if(board.pieces(chess::PieceType::PAWN, color) != chess::Bitboard(0))
     {
         chess::Square sPawn = board.pieces(chess::PieceType::PAWN, color).lsb();
+        pPieceCount += board.pieces(chess::PieceType::PAWN, color).count();
         if(board.isAttacked(sPawn, ~color))
         {
-            value -= 0.1f;
+            value -= 0.2f;
         }
     }
     if(board.pieces(chess::PieceType::KNIGHT, color) != chess::Bitboard(0))
     {
         chess::Square sKnight = board.pieces(chess::PieceType::KNIGHT, color).lsb();
+        pPieceCount += board.pieces(chess::PieceType::KNIGHT, color).count();
         if(board.isAttacked(sKnight, ~color))
         {
-            value -= 0.3f;
+            value -= 0.4f;
         }
     }
     if(board.pieces(chess::PieceType::BISHOP, color) != chess::Bitboard(0))
     {
         chess::Square sBish = board.pieces(chess::PieceType::BISHOP, color).lsb();
+        pPieceCount += board.pieces(chess::PieceType::BISHOP, color).count();
         if(board.isAttacked(sBish, ~color))
         {
-            value -= 0.3f;
+            value -= 0.4f;
         }
     }
     if(board.pieces(chess::PieceType::ROOK, color) != chess::Bitboard(0))
     {
         chess::Square sRook = board.pieces(chess::PieceType::ROOK, color).lsb();
+        pPieceCount += board.pieces(chess::PieceType::ROOK, color).count();
         if(board.isAttacked(sRook, ~color))
         {
-            value -= 0.3f;
+            value -= 0.4f;
         }
     }
     if(board.pieces(chess::PieceType::QUEEN, color) != chess::Bitboard(0))
     {
         chess::Square sQueen = board.pieces(chess::PieceType::QUEEN, color).lsb();
+        pPieceCount += board.pieces(chess::PieceType::QUEEN, color).count();
         if(board.isAttacked(sQueen, ~color))
         {
-            value -= 0.5f;
+            value -= 0.6f;
         }
     }
 
@@ -322,22 +338,25 @@ float ChessSimulator::HTest(chess::Board &board, chess::Color color)
     if(board.pieces(chess::PieceType::PAWN, ~color) != chess::Bitboard(0))
     {
         chess::Square sPawn = board.pieces(chess::PieceType::PAWN, ~color).lsb();
+        ePieceCount += board.pieces(chess::PieceType::PAWN, ~color).count();
         if(board.isAttacked(sPawn, color))
         {
-            value += 0.2f;
+            value += 0.1f;
         }
     }
     if(board.pieces(chess::PieceType::KNIGHT, ~color) != chess::Bitboard(0))
     {
         chess::Square sKnight = board.pieces(chess::PieceType::KNIGHT, ~color).lsb();
+        ePieceCount += board.pieces(chess::PieceType::KNIGHT, ~color).count();
         if(board.isAttacked(sKnight, color))
         {
-            value += 0.5f;
+            value += 0.3f;
         }
     }
     if(board.pieces(chess::PieceType::BISHOP, ~color) != chess::Bitboard(0))
     {
         chess::Square sBish = board.pieces(chess::PieceType::BISHOP, ~color).lsb();
+        ePieceCount += board.pieces(chess::PieceType::BISHOP, ~color).count();
         if(board.isAttacked(sBish, color))
         {
             value += 0.3f;
@@ -346,20 +365,42 @@ float ChessSimulator::HTest(chess::Board &board, chess::Color color)
     if(board.pieces(chess::PieceType::ROOK, ~color) != chess::Bitboard(0))
     {
         chess::Square sRook = board.pieces(chess::PieceType::ROOK, ~color).lsb();
+        ePieceCount += board.pieces(chess::PieceType::ROOK, ~color).count();
         if(board.isAttacked(sRook, color))
         {
-            value += 0.5f;
+            value += 0.4f;
         }
     }
     if(board.pieces(chess::PieceType::QUEEN, ~color) != chess::Bitboard(0))
     {
         chess::Square sQueen = board.pieces(chess::PieceType::QUEEN, ~color).lsb();
+        ePieceCount += board.pieces(chess::PieceType::QUEEN, ~color).count();
         if(board.isAttacked(sQueen, color))
         {
-            value += 0.8f;
+            value += 0.6f;
         }
     }
+    if((nodeIndex < nodes.size() && nodeIndex != -1) && (nodes[nodeIndex].parentIndex < nodes.size() && nodes[nodeIndex].parentIndex != -1)) {
+        int ppPieceCount = 0, pePieceCount = 0;
+        ppPieceCount += nodes[nodes[nodeIndex].parentIndex].board.pieces(chess::PieceType::PAWN, color).count();
+        ppPieceCount += nodes[nodes[nodeIndex].parentIndex].board.pieces(chess::PieceType::KNIGHT, color).count();
+        ppPieceCount += nodes[nodes[nodeIndex].parentIndex].board.pieces(chess::PieceType::BISHOP, color).count();
+        ppPieceCount += nodes[nodes[nodeIndex].parentIndex].board.pieces(chess::PieceType::ROOK, color).count();
+        ppPieceCount += nodes[nodes[nodeIndex].parentIndex].board.pieces(chess::PieceType::QUEEN, color).count();
 
+        pePieceCount += nodes[nodes[nodeIndex].parentIndex].board.pieces(chess::PieceType::PAWN, ~color).count();
+        pePieceCount += nodes[nodes[nodeIndex].parentIndex].board.pieces(chess::PieceType::KNIGHT, ~color).count();
+        pePieceCount += nodes[nodes[nodeIndex].parentIndex].board.pieces(chess::PieceType::BISHOP, ~color).count();
+        pePieceCount += nodes[nodes[nodeIndex].parentIndex].board.pieces(chess::PieceType::ROOK, ~color).count();
+        pePieceCount += nodes[nodes[nodeIndex].parentIndex].board.pieces(chess::PieceType::QUEEN, ~color).count();
+
+        if (ppPieceCount > pPieceCount) {
+            value -= 3;
+        }
+        if (pePieceCount > ePieceCount) {
+            value += 3;
+        }
+    }
     return value;
 }
 //steps each being its own function

@@ -127,9 +127,9 @@ int getRandNum(int seed, int min, int max);
 std::string Move(std::string fen);
 void Selection(chess::Board& board, std::vector<mctsNode>& nodes);
 void Expansion(int nodeIndex, std::vector<mctsNode>& nodes);
-float Simulation(chess::Board& board, chess::Color rootColor);
+float Simulation(std::vector<mctsNode>& nodes, int nodeIndex, chess::Board& board, chess::Color rootColor);
 
-float HTest(chess::Board& board, chess::Color color);
+float HTest(std::vector<mctsNode>& nodes, int nodeIndex, chess::Board& board, chess::Color color);
 
 const double LIMIT = std::numeric_limits<double>::max();
 } // namespace ChessSimulator
