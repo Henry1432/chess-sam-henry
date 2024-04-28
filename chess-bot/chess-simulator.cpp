@@ -53,11 +53,9 @@ std::string ChessSimulator::Move(std::string fen) {
       }
       catch(...)
       {
-          std::cout<<"selection fail\n";
+          //std::cout<<"selection fail\n";
       }
   }
-  //std::cout<<count << "\t";
-  //std::cout<<r<<std::endl;
 
     mctsNode* pickNode = &nodes[1];
     mctsNode* backupNode = &nodes[2];
@@ -82,7 +80,7 @@ std::string ChessSimulator::Move(std::string fen) {
             pickNode = &nodes[pickNode->parentIndex];
         }
     }
-    counter = 0;
+    count = 0;
     while(nodes[backupNode->parentIndex].parentIndex != -1)
     {
         if(backupNode->parentIndex < nodes.size())
@@ -142,7 +140,7 @@ void ChessSimulator::Selection(chess::Board& board, std::vector<mctsNode>& nodes
         }
         catch(...)
         {
-            std::cout << "expansion failed\n";
+            //std::cout << "expansion failed\n";
         }
         //std::cout << duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch()) << std::endl;
     }
