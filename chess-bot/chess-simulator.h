@@ -10,7 +10,6 @@ struct mctsNode{
     chess::Board board;
     chess::Move saveMove;
     float potential;
-    //mctsNode* parent;
     int parentIndex;
     std::vector<chess::Move> openMoves;
     std::vector<chess::Move> foundMoves;
@@ -52,6 +51,11 @@ struct mctsNode{
         foundMoves.clear();
         openMoves.clear();
     }
+    ~mctsNode()
+    {
+        openMoves.clear();
+        foundMoves.clear();
+    }
 
     int findIndexInFound(chess::Move move)
     {
@@ -87,10 +91,10 @@ struct mctsNode{
         return index != -1;
     }
 
-    double getUCB(double c, std::vector<mctsNode> nodes)
+    double getUCB(double c, std::vector<mctsNode*> nodes)
     {
         if((double)foundMoves.size() > 0 && parentIndex != -1)
-            return potential + 1 * sqrt(log((double)nodes[parentIndex].foundMoves.size()/(double)foundMoves.size()));
+            return potential + 1 * sqrt(log((double)nodes[parentIndex]->foundMoves.size()/(double)foundMoves.size()));
         else
             return std::numeric_limits<double>::max();
     }
@@ -125,11 +129,11 @@ namespace ChessSimulator {
 int getRandNum(int seed, int min, int max);
 
 std::string Move(std::string fen);
-void Selection(chess::Board& board, std::vector<mctsNode>& nodes);
-void Expansion(int nodeIndex, std::vector<mctsNode>& nodes);
-float Simulation(std::vector<mctsNode>& nodes, int nodeIndex, chess::Board& board, chess::Color rootColor);
+void Selection(chess::Board& board, std::vector<mctsNode*> &nodes);
+void Expansion(int nodeIndex, std::vector<mctsNode*> &nodes);
+float Simulation(std::vector<mctsNode*> &nodes, int nodeIndex, chess::Board& board, chess::Color rootColor);
 
-float HTest(std::vector<mctsNode>& nodes, int nodeIndex, chess::Board& board, chess::Color color);
+float HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess::Board& board, chess::Color color);
 
 const double LIMIT = std::numeric_limits<double>::max();
 } // namespace ChessSimulator
