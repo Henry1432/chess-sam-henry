@@ -226,9 +226,9 @@ float ChessSimulator::Simulation(std::vector<mctsNode*> &nodes, int nodeIndex, c
         chess::Color attackColor = rootColor == chess::Color::WHITE ? chess::Color::BLACK : chess::Color::WHITE;
         if(board.isAttacked(board.kingSq(rootColor), attackColor))
         {
-            return -5 + h;
+            return -10 + h;
         }
-        return 5 + h;
+        return 10 + h;
     }
 }
 
@@ -236,51 +236,54 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
 {
     //board.pieces(chess::PieceType::KING, color).lsb();
     float value = 0;
-    int pPieceCount = 0, ePieceCount = 0;
+    //int pPieceCount = 0, ePieceCount = 0;
+
+    int pQueenCount = 0, pRookCount = 0, pBishopCount = 0, pKnightCount = 0, pPawnCount = 0;
+    int eQueenCount = 0, eRookCount = 0, eBishopCount = 0, eKnightCount = 0, ePawnCount = 0;
 
     if(board.pieces(chess::PieceType::PAWN, color) != chess::Bitboard(0))
     {
         chess::Square sPawn = board.pieces(chess::PieceType::PAWN, color).lsb();
-        pPieceCount += board.pieces(chess::PieceType::PAWN, color).count();
+        pPawnCount += board.pieces(chess::PieceType::PAWN, color).count();
         if(board.isAttacked(sPawn, ~color))
         {
-            value -= 0.2f;
+            value -= 2;
         }
     }
     if(board.pieces(chess::PieceType::KNIGHT, color) != chess::Bitboard(0))
     {
         chess::Square sKnight = board.pieces(chess::PieceType::KNIGHT, color).lsb();
-        pPieceCount += board.pieces(chess::PieceType::KNIGHT, color).count();
+        pKnightCount += board.pieces(chess::PieceType::KNIGHT, color).count();
         if(board.isAttacked(sKnight, ~color))
         {
-            value -= 0.4f;
+            value -= 4;
         }
     }
     if(board.pieces(chess::PieceType::BISHOP, color) != chess::Bitboard(0))
     {
         chess::Square sBish = board.pieces(chess::PieceType::BISHOP, color).lsb();
-        pPieceCount += board.pieces(chess::PieceType::BISHOP, color).count();
+        pBishopCount += board.pieces(chess::PieceType::BISHOP, color).count();
         if(board.isAttacked(sBish, ~color))
         {
-            value -= 0.4f;
+            value -= 4;
         }
     }
     if(board.pieces(chess::PieceType::ROOK, color) != chess::Bitboard(0))
     {
         chess::Square sRook = board.pieces(chess::PieceType::ROOK, color).lsb();
-        pPieceCount += board.pieces(chess::PieceType::ROOK, color).count();
+        pRookCount += board.pieces(chess::PieceType::ROOK, color).count();
         if(board.isAttacked(sRook, ~color))
         {
-            value -= 0.4f;
+            value -= 4;
         }
     }
     if(board.pieces(chess::PieceType::QUEEN, color) != chess::Bitboard(0))
     {
         chess::Square sQueen = board.pieces(chess::PieceType::QUEEN, color).lsb();
-        pPieceCount += board.pieces(chess::PieceType::QUEEN, color).count();
+        pQueenCount += board.pieces(chess::PieceType::QUEEN, color).count();
         if(board.isAttacked(sQueen, ~color))
         {
-            value -= 0.6f;
+            value -= 8;
         }
     }
 
@@ -288,68 +291,114 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
     if(board.pieces(chess::PieceType::PAWN, ~color) != chess::Bitboard(0))
     {
         chess::Square sPawn = board.pieces(chess::PieceType::PAWN, ~color).lsb();
-        ePieceCount += board.pieces(chess::PieceType::PAWN, ~color).count();
+        ePawnCount += board.pieces(chess::PieceType::PAWN, ~color).count();
         if(board.isAttacked(sPawn, color))
         {
-            value += 0.1f;
+            value += 2;
         }
     }
     if(board.pieces(chess::PieceType::KNIGHT, ~color) != chess::Bitboard(0))
     {
         chess::Square sKnight = board.pieces(chess::PieceType::KNIGHT, ~color).lsb();
-        ePieceCount += board.pieces(chess::PieceType::KNIGHT, ~color).count();
+        eKnightCount += board.pieces(chess::PieceType::KNIGHT, ~color).count();
         if(board.isAttacked(sKnight, color))
         {
-            value += 0.3f;
+            value += 3;
         }
     }
     if(board.pieces(chess::PieceType::BISHOP, ~color) != chess::Bitboard(0))
     {
         chess::Square sBish = board.pieces(chess::PieceType::BISHOP, ~color).lsb();
-        ePieceCount += board.pieces(chess::PieceType::BISHOP, ~color).count();
+        eBishopCount += board.pieces(chess::PieceType::BISHOP, ~color).count();
         if(board.isAttacked(sBish, color))
         {
-            value += 0.3f;
+            value += 3;
         }
     }
     if(board.pieces(chess::PieceType::ROOK, ~color) != chess::Bitboard(0))
     {
         chess::Square sRook = board.pieces(chess::PieceType::ROOK, ~color).lsb();
-        ePieceCount += board.pieces(chess::PieceType::ROOK, ~color).count();
+        eRookCount += board.pieces(chess::PieceType::ROOK, ~color).count();
         if(board.isAttacked(sRook, color))
         {
-            value += 0.4f;
+            value += 3;
         }
     }
     if(board.pieces(chess::PieceType::QUEEN, ~color) != chess::Bitboard(0))
     {
         chess::Square sQueen = board.pieces(chess::PieceType::QUEEN, ~color).lsb();
-        ePieceCount += board.pieces(chess::PieceType::QUEEN, ~color).count();
+        eQueenCount += board.pieces(chess::PieceType::QUEEN, ~color).count();
         if(board.isAttacked(sQueen, color))
         {
-            value += 0.6f;
+            value += 7;
         }
     }
     if((nodeIndex < nodes.size() && nodeIndex != -1) && (nodes[nodeIndex]->parentIndex < nodes.size() && nodes[nodeIndex]->parentIndex != -1)) {
-        int ppPieceCount = 0, pePieceCount = 0;
-        ppPieceCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::PAWN, color).count();
-        ppPieceCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::KNIGHT, color).count();
-        ppPieceCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::BISHOP, color).count();
-        ppPieceCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::ROOK, color).count();
-        ppPieceCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::QUEEN, color).count();
+        //int ppPieceCount = 0, pePieceCount = 0;
 
-        pePieceCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::PAWN, ~color).count();
-        pePieceCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::KNIGHT, ~color).count();
-        pePieceCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::BISHOP, ~color).count();
-        pePieceCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::ROOK, ~color).count();
-        pePieceCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::QUEEN, ~color).count();
+        int ppQueenCount = 0, ppRookCount = 0, ppBishopCount = 0, ppKnightCount = 0, ppPawnCount = 0;
+        int peQueenCount = 0, peRookCount = 0, peBishopCount = 0, peKnightCount = 0, pePawnCount = 0;
 
-        if (ppPieceCount > pPieceCount) {
-            value -= 3;
+        ppPawnCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::PAWN, color).count();
+        ppKnightCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::KNIGHT, color).count();
+        ppBishopCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::BISHOP, color).count();
+        ppRookCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::ROOK, color).count();
+        ppQueenCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::QUEEN, color).count();
+
+        pePawnCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::PAWN, ~color).count();
+        peKnightCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::KNIGHT, ~color).count();
+        peBishopCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::BISHOP, ~color).count();
+        peRookCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::ROOK, ~color).count();
+        peQueenCount += nodes[nodes[nodeIndex]->parentIndex]->board.pieces(chess::PieceType::QUEEN, ~color).count();
+
+        if(ppPawnCount > pPawnCount)
+        {
+            value -= 4;
+        }
+        if(ppKnightCount > pKnightCount)
+        {
+            value -= 6;
+        }
+        if(ppBishopCount > pBishopCount)
+        {
+            value -= 6;
+        }
+        if(ppRookCount > pRookCount)
+        {
+            value -= 6;
+        }
+        if(ppQueenCount > pQueenCount)
+        {
+            value -= 20;
+        }
+
+        if(pePawnCount > ePawnCount)
+        {
+            value += 4;
+        }
+        if(peKnightCount > eKnightCount)
+        {
+            value += 6;
+        }
+        if(peBishopCount > eBishopCount)
+        {
+            value += 6;
+        }
+        if(peRookCount > eRookCount)
+        {
+            value += 6;
+        }
+        if(peQueenCount > eQueenCount)
+        {
+            value += 20;
+        }
+
+        /*if (ppPieceCount > pPieceCount) {
+            value -= 10;
         }
         if (pePieceCount > ePieceCount) {
-            value += 3;
-        }
+            value += 10;
+        }*/
     }
     return value;
 }
