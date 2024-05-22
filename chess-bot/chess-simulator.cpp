@@ -247,7 +247,7 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
         pPawnCount += board.pieces(chess::PieceType::PAWN, color).count();
         if(board.isAttacked(sPawn, ~color))
         {
-            value -= 2;
+            value -= 3;
         }
     }
     if(board.pieces(chess::PieceType::KNIGHT, color) != chess::Bitboard(0))
@@ -256,7 +256,7 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
         pKnightCount += board.pieces(chess::PieceType::KNIGHT, color).count();
         if(board.isAttacked(sKnight, ~color))
         {
-            value -= 4;
+            value -= 5;
         }
     }
     if(board.pieces(chess::PieceType::BISHOP, color) != chess::Bitboard(0))
@@ -265,7 +265,7 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
         pBishopCount += board.pieces(chess::PieceType::BISHOP, color).count();
         if(board.isAttacked(sBish, ~color))
         {
-            value -= 4;
+            value -= 5;
         }
     }
     if(board.pieces(chess::PieceType::ROOK, color) != chess::Bitboard(0))
@@ -274,7 +274,7 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
         pRookCount += board.pieces(chess::PieceType::ROOK, color).count();
         if(board.isAttacked(sRook, ~color))
         {
-            value -= 4;
+            value -= 8;
         }
     }
     if(board.pieces(chess::PieceType::QUEEN, color) != chess::Bitboard(0))
@@ -283,7 +283,7 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
         pQueenCount += board.pieces(chess::PieceType::QUEEN, color).count();
         if(board.isAttacked(sQueen, ~color))
         {
-            value -= 8;
+            value -= 12;
         }
     }
 
@@ -303,7 +303,7 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
         eKnightCount += board.pieces(chess::PieceType::KNIGHT, ~color).count();
         if(board.isAttacked(sKnight, color))
         {
-            value += 3;
+            value += 4;
         }
     }
     if(board.pieces(chess::PieceType::BISHOP, ~color) != chess::Bitboard(0))
@@ -312,7 +312,7 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
         eBishopCount += board.pieces(chess::PieceType::BISHOP, ~color).count();
         if(board.isAttacked(sBish, color))
         {
-            value += 3;
+            value += 4;
         }
     }
     if(board.pieces(chess::PieceType::ROOK, ~color) != chess::Bitboard(0))
@@ -321,7 +321,7 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
         eRookCount += board.pieces(chess::PieceType::ROOK, ~color).count();
         if(board.isAttacked(sRook, color))
         {
-            value += 3;
+            value += 6;
         }
     }
     if(board.pieces(chess::PieceType::QUEEN, ~color) != chess::Bitboard(0))
@@ -330,7 +330,7 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
         eQueenCount += board.pieces(chess::PieceType::QUEEN, ~color).count();
         if(board.isAttacked(sQueen, color))
         {
-            value += 7;
+            value += 9;
         }
     }
     if((nodeIndex < nodes.size() && nodeIndex != -1) && (nodes[nodeIndex]->parentIndex < nodes.size() && nodes[nodeIndex]->parentIndex != -1)) {
@@ -353,44 +353,44 @@ float ChessSimulator::HTest(std::vector<mctsNode*> &nodes, int nodeIndex, chess:
 
         if(ppPawnCount > pPawnCount)
         {
-            value -= 4;
+            value -= 3;
         }
         if(ppKnightCount > pKnightCount)
         {
-            value -= 6;
+            value -= 5;
         }
         if(ppBishopCount > pBishopCount)
         {
-            value -= 6;
+            value -= 5;
         }
         if(ppRookCount > pRookCount)
         {
-            value -= 6;
+            value -= 8;
         }
         if(ppQueenCount > pQueenCount)
         {
-            value -= 20;
+            value -= 18;
         }
 
         if(pePawnCount > ePawnCount)
         {
-            value += 4;
+            value += 5;
         }
         if(peKnightCount > eKnightCount)
         {
-            value += 6;
+            value += 7;
         }
         if(peBishopCount > eBishopCount)
         {
-            value += 6;
+            value += 7;
         }
         if(peRookCount > eRookCount)
         {
-            value += 6;
+            value += 10;
         }
         if(peQueenCount > eQueenCount)
         {
-            value += 20;
+            value += 25;
         }
 
         /*if (ppPieceCount > pPieceCount) {
